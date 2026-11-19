@@ -2,7 +2,10 @@ import argparse
 import os
 import sys
 
+from apkindex import find_package, get_dependencies, parse_index
+from repository import download_index
 
+# правила приема
 def build_parser():
     parser = argparse.ArgumentParser(
         description="Dependency graph visualizer for Alpine packages")
@@ -22,7 +25,7 @@ def build_parser():
                         help="skip packages whose name contains this")
     return parser
 
-
+# обработка ошибок
 def validate(config):
     if not config["package"].strip():
         raise ValueError("package name must not be empty")
@@ -36,17 +39,37 @@ def validate(config):
     elif not config["repo"].startswith(("http://", "https://")):
         raise ValueError("repo must be an http(s) URL (or use --test-mode)")
 
+#
+def load_dependencies(config):
+    if config["test_mode"]:
+        raise RuntimeError("test mode is not supported yet")
+    packages = parse_index(download_index(config["repo"]))
+    package = find_package(packages, config["package"], config["version"])
+    if package is None:
+        raise RuntimeError(
+            f"package {config['package']} {config['version']} not found")
+    return get_dependencies(package)
+
+
+def print_dependencies(config, dependencies):
+    print(f"Direct dependencies of {config['package']} "
+          f"{config['version']}:")
+    if not dependencies:
+        print("  (none)")
+    for dependency in dependencies:
+        print(f"  {dependency}")
+
 
 def main():
     config = vars(build_parser().parse_args())
     try:
         validate(config)
-    except ValueError as error:
+        dependencies = load_dependencies(config)
+    except (ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
-    for key, value in config.items():
-        print(f"{key}: {value}")
+    print_dependencies(config, dependencies)
 
 
-# if __name__ == "__main__":
-main()
+if __name__ == "__main__":
+    main()

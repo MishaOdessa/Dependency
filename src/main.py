@@ -2,11 +2,13 @@ import argparse
 import os
 import sys
 
-from apkindex import find_package, get_dependencies, parse_index
+from apkindex import find_package, parse_index
+from graph import build_dependency_graph, build_index_map, parse_test_repo
 from repository import download_index
 
-# правила приема
+
 def build_parser():
+    """Описание параметров командной строки."""
     parser = argparse.ArgumentParser(
         description="Dependency graph visualizer for Alpine packages")
     parser.add_argument("--package", required=True,
@@ -25,8 +27,9 @@ def build_parser():
                         help="skip packages whose name contains this")
     return parser
 
-# обработка ошибок
+
 def validate(config):
+    """Проверка корректности переданных параметров."""
     if not config["package"].strip():
         raise ValueError("package name must not be empty")
     if not config["version"].strip():
@@ -39,36 +42,46 @@ def validate(config):
     elif not config["repo"].startswith(("http://", "https://")):
         raise ValueError("repo must be an http(s) URL (or use --test-mode)")
 
-#
-def load_dependencies(config):
+
+def resolve_graph(config):
+    """Загружает данные и строит граф зависимостей."""
     if config["test_mode"]:
-        raise RuntimeError("test mode is not supported yet")
+        dep_map = parse_test_repo(config["repo"])
+        if config["package"] not in dep_map:
+            raise RuntimeError(f"package {config['package']} not found")
+        return build_dependency_graph(
+            config["package"], dep_map, config["filter_substring"])
     packages = parse_index(download_index(config["repo"]))
-    package = find_package(packages, config["package"], config["version"])
-    if package is None:
+    target = find_package(packages, config["package"], config["version"])
+    if target is None:
         raise RuntimeError(
             f"package {config['package']} {config['version']} not found")
-    return get_dependencies(package)
+    dep_map = build_index_map(packages)
+    dep_map[config["package"]] = target.get("D", "").split()
+    return build_dependency_graph(
+        config["package"], dep_map, config["filter_substring"])
 
 
-def print_dependencies(config, dependencies):
-    print(f"Direct dependencies of {config['package']} "
-          f"{config['version']}:")
-    if not dependencies:
-        print("  (none)")
-    for dependency in dependencies:
-        print(f"  {dependency}")
+def print_graph(graph):
+    """Выводит граф зависимостей построчно."""
+    if not graph:
+        print("(empty graph)")
+        return
+    for pkg, deps in graph.items():
+        joined = ", ".join(deps) if deps else "(none)"
+        print(f"{pkg} -> {joined}")
 
 
 def main():
+    """Точка входа: чтение аргументов, проверка и вывод графа."""
     config = vars(build_parser().parse_args())
     try:
         validate(config)
-        dependencies = load_dependencies(config)
+        graph = resolve_graph(config)
     except (ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
-    print_dependencies(config, dependencies)
+    print_graph(graph)
 
 
 if __name__ == "__main__":

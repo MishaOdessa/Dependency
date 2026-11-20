@@ -4,6 +4,10 @@ VERSION_OPERATORS = ("=", "<", ">", "~")
 PAIR_SEPARATOR = ":"
 
 
+NODE_VISITING = 1
+NODE_VISITED = 2
+
+
 def strip_version(dep_name):
     """Отрезает ограничение версии (например >=1.0) от имени зависимости."""
     for operator in VERSION_OPERATORS:
@@ -64,3 +68,21 @@ def build_dependency_graph(start_pkg, dep_map, filter_sub=""):
                 graph.setdefault(dep, [])
                 queue.append(dep)
     return graph
+
+def get_load_order(start_pkg, graph):
+    """Вычисляет порядок загрузки зависимостей (сначала глубокие, затем корневой)."""
+    order = []
+    state = {}
+
+    def visit(node):
+        if state.get(node) in (NODE_VISITING, NODE_VISITED):
+            return
+        state[node] = NODE_VISITING
+        for dep in graph.get(node, []):
+            visit(dep)
+        state[node] = NODE_VISITED
+        order.append(node)
+
+    if start_pkg in graph:
+        visit(start_pkg)
+    return order

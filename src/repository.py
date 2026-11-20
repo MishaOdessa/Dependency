@@ -8,11 +8,11 @@ INDEX_ARCHIVE = "APKINDEX.tar.gz"
 INDEX_FILE = "APKINDEX"
 TIMEOUT_SECONDS = 30
 
-#создание полноценной ссылки
+'''создание полноценной ссылки'''
 def build_index_url(repo_url):
     return f"{repo_url.rstrip('/')}/{ARCH}/{INDEX_ARCHIVE}"
 
-#распаковка архива
+'''распаковка архива'''
 def extract_index_text(data):
     try:
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
@@ -20,7 +20,7 @@ def extract_index_text(data):
     except (tarfile.TarError, KeyError, OSError) as error:
         raise RuntimeError(f"bad index archive: {error}") from error
 
-#установка
+'''установка'''
 def download_index(repo_url):
     url = build_index_url(repo_url)
     try:

@@ -3,7 +3,7 @@ import os
 import sys
 
 from apkindex import find_package, parse_index
-from graph import build_dependency_graph, build_index_map, parse_test_repo
+from graph import build_dependency_graph, build_index_map, get_load_order, parse_test_repo
 from repository import download_index
 
 
@@ -25,6 +25,9 @@ def build_parser():
                         help="print dependencies as an ASCII tree")
     parser.add_argument("--filter", default="", dest="filter_substring",
                         help="skip packages whose name contains this")
+    parser.add_argument("--load-order", action="store_true",
+                        help="print package installation order")
+
     return parser
 
 
@@ -72,8 +75,17 @@ def print_graph(graph):
         print(f"{pkg} -> {joined}")
 
 
+def print_load_order(order):
+    """Выводит порядок загрузки зависимостей."""
+    if not order:
+        print("(empty load order)")
+        return
+    for step, pkg in enumerate(order, start=1):
+        print(f"{step}. {pkg}")
+
+
 def main():
-    """Точка входа: чтение аргументов, проверка и вывод графа."""
+    """Точка входа: чтение аргументов, проверка и вывод результата."""
     config = vars(build_parser().parse_args())
     try:
         validate(config)
@@ -81,7 +93,10 @@ def main():
     except (ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
-    print_graph(graph)
+    if config["load_order"]:
+        print_load_order(get_load_order(config["package"], graph))
+    else:
+        print_graph(graph)
 
 
 if __name__ == "__main__":

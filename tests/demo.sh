@@ -50,3 +50,16 @@ run_case "ERROR: repo is not an http(s) URL" \
 
 run_case "ERROR: output is not .svg" \
     --package curl --repo "$URL" --version 1 --output pic.png
+
+# --- stage 4: dependency load order
+run_case "STAGE 4 (TEST): load order for A (with cycle B <-> D and diamond E)" \
+    --package A --repo "$TEST_REPO" --test-mode --version 1 --load-order
+
+run_case "STAGE 4 (TEST): load order starting inside cycle (package D)" \
+    --package D --repo "$TEST_REPO" --test-mode --version 1 --load-order
+
+run_case "STAGE 4 (TEST): load order with filter (--filter E)" \
+    --package A --repo "$TEST_REPO" --test-mode --version 1 --filter E --load-order
+
+run_case "STAGE 4 (REAL REPO): load order for curl (without so:)" \
+    --package curl --repo "$URL" --version 8.14.1 --filter "so:" --load-order

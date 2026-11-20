@@ -2,7 +2,7 @@
 
 RELEASE_PREFIX = "-r"
 
-#разделение по блокам
+'''разделение по блокам'''
 def parse_index(text):
     packages = []
     for block in text.split("\n\n"):
@@ -14,7 +14,7 @@ def parse_index(text):
             packages.append(package)
     return packages
 
-# разделение по строкам
+'''разделение по строкам'''
 def find_package(packages, name, version):
     for package in packages:
         if package.get("P") != name:
@@ -25,6 +25,6 @@ def find_package(packages, name, version):
             return package
     return None
 
-# разделение строки в словарь
+'''разделение строки в словарь'''
 def get_dependencies(package):
     return package.get("D", "").split()
